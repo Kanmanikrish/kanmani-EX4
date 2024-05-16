@@ -1,30 +1,64 @@
-import pickle
-from flask import Flask, request
-from helper import clean_text
-import json
+import streamlit as st
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+from sklearn.naive_bayes import GaussianNB
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
 
-# load the model
-with open('Models/mnb_model.pkl', 'rb')as f:
-    model = pickle.load(f)
+# Title of the app
+st.title('Tennis Play Predictor')
 
-app = Flask(__name__)
+# File uploader for CSV
+uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
 
-@app.route('/predict/', methods=['POST', 'GET'])
-def predict() -> str:
+if uploaded_file is not None:
+    # Read the CSV file
+    data = pd.read_csv(uploaded_file)
+    st.write("The first 5 values of the data are:")
+    st.write(data.head())
 
-    response = request.get_json()
-    if isinstance(response, (list, tuple)):
-        result = dict()
-        for text in response:
-            if len(clean_text(text)) > 1 :
-                result[text] = model.predict([clean_text(text)])[0]
-            else:
-                result[text] = 'Not an Arabic word'
-        return json.dumps(result)
-    elif response == None:
-        return json.dumps("Make sure you're not sending None and sending the request with the Content-type: application/json header.")
+    # Extract features (training data) and target variable (training output)
+    features = data.iloc[:, :-1]  # Assuming the last column is the target
+    target = data.iloc[:, -1]
 
-    return json.dumps("Make sure you're sending a sequence(list/tuple) of strings and sending ")
+    st.write("The first 5 values of the features are:")
+    st.write(features.head())
 
+    st.write("The first 5 values of the target variable are:")
+    st.write(target.head())
 
-app.run(debug=True, port=8080) #run app on port 8080 in debug mode
+    # Convert categorical features to numerical values
+    label_encoders = {}
+
+    for col in features.columns:
+        le = LabelEncoder()
+        features[col] = le.fit_transform(features[col])
+        label_encoders[col] = le  # Store encoders for later use (optional)
+
+    st.write("The transformed features are:")
+    st.write(features.head())
+
+    # Convert the target variable to numerical values
+    le_play_tennis = LabelEncoder()
+    target = le_play_tennis.fit_transform(target)
+
+    st.write("The transformed target variable is:")
+    st.write(target)
+
+    # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.20, random_state=42)
+
+    # Train the Gaussian Naive Bayes model
+    classifier = GaussianNB()
+    classifier.fit(X_train, y_train)
+
+    # Predict on the test set and calculate accuracy
+    y_pred = classifier.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+
+    st.write(f"Accuracy is: {accuracy:.2f}")
+
+# Instructions to run the Streamlit app in the terminal:
+# streamlit run app.py
+
+   
