@@ -81,7 +81,7 @@ class CNN:
       learning_rate: The learning rate for gradient descent.
       epochs: The number of training epochs.
     """
-    for epoch in range(epochs):
+     epoch in range(epochs):
       
 
   
