@@ -1,104 +1,87 @@
-import streamlit as st
-import pandas as pd
 import numpy as np
-import string
-from collections import defaultdict
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-from nltk.stem import PorterStemmer
-from nltk.probability import FreqDist
 
-# Download NLTK resources
-import nltk
-nltk.download('punkt')
-nltk.download('stopwords')
+class CNN:
+  """
+  Simple convolutional neural network with one convolutional layer and one fully-connected layer.
+  """
+  def __init__(self, input_shape, num_classes, kernel_size=(3, 3), num_filters=8):
+    """
+    Initializes the CNN with input shape, number of classes, kernel size, and number of filters.
 
-# Function to preprocess text
-def preprocess_text(text):
-    # Lowercase
-    text = text.lower()
-    
-    # Remove punctuation
-    text = text.translate(str.maketrans('', '', string.punctuation))
-    
-    # Tokenize
-    tokens = word_tokenize(text)
-    
-    # Remove stopwords
-    stop_words = set(stopwords.words('english'))
-    tokens = [word for word in tokens if word not in stop_words]
-    
-    # Stemming
-    stemmer = PorterStemmer()
-    tokens = [stemmer.stem(word) for word in tokens]
-    
-    return tokens
+    Args:
+      input_shape: A tuple representing the shape of the input image (height, width, channels).
+      num_classes: The number of output classes (number of categories to classify).
+      kernel_size: A tuple representing the size of the convolutional kernel.
+      num_filters: The number of filters in the convolutional layer.
+    """
+    self.input_shape = input_shape
+    self.num_classes = num_classes
+    self.kernel_size = kernel_size
+    self.num_filters = num_filters
 
-# Naive Bayes Classifier
-class NaiveBayesClassifier:
-    def __init__(self):
-        self.class_word_counts = defaultdict(lambda: defaultdict(int))
-        self.class_counts = defaultdict(int)
-        self.vocabulary = set()
-    
-    def fit(self, X, y):
-        for text, label in zip(X, y):
-            words = preprocess_text(text)
-            for word in words:
-                self.class_word_counts[label][word] += 1
-                self.class_counts[label] += 1
-                self.vocabulary.add(word)
-    
-    def predict(self, X):
-        predictions = []
-        for text in X:
-            words = preprocess_text(text)
-            pos_score = np.log(self.class_counts[1] / sum(self.class_counts.values()))
-            neg_score = np.log(self.class_counts[0] / sum(self.class_counts.values()))
-            
-            for word in words:
-                if word in self.vocabulary:
-                    pos_score += np.log((self.class_word_counts[1][word] + 1) / (self.class_counts[1] + len(self.vocabulary)))
-                    neg_score += np.log((self.class_word_counts[0][word] + 1) / (self.class_counts[0] + len(self.vocabulary)))
-            
-            if pos_score > neg_score:
-                predictions.append(1)
-            else:
-                predictions.append(0)
-        
-        return np.array(predictions)
+    # Initialize weights and biases for convolutional layer and fully-connected layer
+    self.conv_weights = np.random.randn(self.kernel_size[0], self.kernel_size[1], input_shape[2], self.num_filters) / np.sqrt(input_shape[2])
+    self.conv_bias = np.zeros(shape=(self.num_filters,))
+    self.fc_weights = np.random.randn(self.num_filters * input_shape[0] * input_shape[1], self.num_classes) / np.sqrt(self.num_filters * input_shape[0] * input_shape[1])
+    self.fc_bias = np.zeros(shape=(self.num_classes,))
 
-def main():
-    st.title("Text Classification using Naive Bayes")
+  def sigmoid(self, x):
+    """
+    Sigmoid activation function.
+    """
+    return 1 / (1 + np.exp(-x))
 
-    # File upload
-    uploaded_file = st.file_uploader("Upload CSV file", type=['csv'])
+  def softmax(self, x):
+    """
+    Softmax activation function.
+    """
+    e_x = np.exp(x - np.max(x, axis=1, keepdims=True))
+    return e_x / np.sum(e_x, axis=1, keepdims=True)
 
-    if uploaded_file is not None:
-        data = pd.read_csv(uploaded_file, names=['message', 'label'])
-        st.write("The first 5 rows of data:")
-        st.write(data.head())
+  def forward(self, X):
+    """
+    Forward pass through the CNN.
 
-        msg = data.message
-        y = data.label.map({'pos': 1, 'neg': 0})
+    Args:
+      X: A numpy array representing the input image(s).
 
-        # Split data into train and test sets
-        split_ratio = 0.8
-        indices = np.random.permutation(len(msg))
-        train_size = int(len(msg) * split_ratio)
-        train_idx, test_idx = indices[:train_size], indices[train_size:]
-        Xtrain, Xtest = msg.iloc[train_idx], msg.iloc[test_idx]
-        ytrain, ytest = y.iloc[train_idx], y.iloc[test_idx]
+    Returns:
+      A numpy array representing the output probabilities for each class.
+    """
+    # Convolutional layer
+    conv_out = np.zeros(shape=(X.shape[0], X.shape[1] - self.kernel_size[0] + 1, X.shape[2] - self.kernel_size[1] + 1, self.num_filters))
+    for i in range(X.shape[0]):
+      for f in range(self.num_filters):
+        for c in range(X.shape[2]):
+          for j in range(self.kernel_size[0]):
+            for k in range(self.kernel_size[1]):
+              # Apply filter to input image
+              conv_out[i, j, k, f] += X[i, j + self.kernel_size[0] - 1 - k, c] * self.conv_weights[j, k, c, f]
+        conv_out[i, :, :, f] += self.conv_bias[f]
+    # Apply activation (e.g., ReLU)
+    conv_out = self.sigmoid(conv_out)
 
-        # Train classifier
-        classifier = NaiveBayesClassifier()
-        classifier.fit(Xtrain, ytrain)
+    # Flatten output for fully-connected layer
+    flattened = conv_out.reshape(X.shape[0], -1)
 
-        # Predict and evaluate
-        y_pred = classifier.predict(Xtest)
-        accuracy = np.mean(y_pred == ytest)
+    # Fully-connected layer
+    fc_out = flattened.dot(self.fc_weights) + self.fc_bias
 
-        st.write(f"Accuracy: {accuracy:.2f}")
+    # Apply softmax activation for probability distribution
+    output = self.softmax(fc_out)
+    return output
 
-if __name__ == "__main__":
-    main()
+  def train(self, X, y, learning_rate=0.01, epochs=10):
+    """
+    Trains the CNN using gradient descent.
+
+    Args:
+      X: A numpy array representing the training images.
+      y: A numpy array representing the training labels (one-hot encoded).
+      learning_rate: The learning rate for gradient descent.
+      epochs: The number of training epochs.
+    """
+    for epoch in range(epochs):
+      
+
+  
