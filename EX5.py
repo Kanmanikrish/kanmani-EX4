@@ -2,93 +2,96 @@ import pandas as pd
 import numpy as np
 from collections import Counter
 import math
+import streamlit as st
 
-# Load data
-msg = pd.read_csv('document.csv', names=['message', 'label'])
-print("Total Instances of Dataset: ", msg.shape[0])
-msg['labelnum'] = msg.label.map({'pos': 1, 'neg': 0})
+# File uploader
+uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
 
-X = msg.message
-y = msg.labelnum
+if uploaded_file is not None:
+    # Load data
+    msg = pd.read_csv(uploaded_file, names=['message', 'label'])
+    st.write("Total Instances of Dataset: ", msg.shape[0])
+    msg['labelnum'] = msg.label.map({'pos': 1, 'neg': 0})
 
-# Split data (using numpy)
-def train_test_split(X, y, test_size=0.25, random_state=None):
-    if random_state:
-        np.random.seed(random_state)
-    indices = np.arange(X.shape[0])
-    np.random.shuffle(indices)
-    split_idx = int(X.shape[0] * (1 - test_size))
-    train_idx, test_idx = indices[:split_idx], indices[split_idx:]
-    return X.iloc[train_idx], X.iloc[test_idx], y.iloc[train_idx], y.iloc[test_idx]
+    X = msg.message
+    y = msg.labelnum
 
-Xtrain, Xtest, ytrain, ytest = train_test_split(X, y)
+    # Split data (using numpy)
+    def train_test_split(X, y, test_size=0.25, random_state=None):
+        if random_state:
+            np.random.seed(random_state)
+        indices = np.arange(X.shape[0])
+        np.random.shuffle(indices)
+        split_idx = int(X.shape[0] * (1 - test_size))
+        train_idx, test_idx = indices[:split_idx], indices[split_idx:]
+        return X.iloc[train_idx], X.iloc[test_idx], y.iloc[train_idx], y.iloc[test_idx]
 
-# Count Vectorization
-def count_vectorize(corpus):
-    vocab = Counter()
-    for doc in corpus:
-        vocab.update(doc.split())
-    vocab = sorted(vocab.keys())
-    
-    def vectorize(doc):
-        vec = np.zeros(len(vocab))
-        word_counts = Counter(doc.split())
-        for i, word in enumerate(vocab):
-            vec[i] = word_counts[word]
-        return vec
-    
-    return np.array([vectorize(doc) for doc in corpus]), vocab
+    Xtrain, Xtest, ytrain, ytest = train_test_split(X, y)
 
-Xtrain_dm, vocab = count_vectorize(Xtrain)
-Xtest_dm, _ = count_vectorize(Xtest)
+    # Count Vectorization
+    def count_vectorize(corpus):
+        vocab = Counter()
+        for doc in corpus:
+            vocab.update(doc.split())
+        vocab = sorted(vocab.keys())
 
-# Custom Multinomial Naive Bayes
-class MultinomialNB:
-    def fit(self, X, y):
-        self.classes = np.unique(y)
-        self.class_count = np.array([np.sum(y == c) for c in self.classes])
-        self.feature_count = np.array([np.sum(X[y == c], axis=0) for c in self.classes])
-        self.feature_log_prob = np.log((self.feature_count + 1) / (self.feature_count.sum(axis=1, keepdims=True) + X.shape[1]))
-        self.class_log_prior = np.log(self.class_count / y.size)
-        
-    def predict(self, X):
-        jll = X @ self.feature_log_prob.T + self.class_log_prior
-        return self.classes[np.argmax(jll, axis=1)]
+        def vectorize(doc):
+            vec = np.zeros(len(vocab))
+            word_counts = Counter(doc.split())
+            for i, word in enumerate(vocab):
+                vec[i] = word_counts[word]
+            return vec
 
-clf = MultinomialNB()
-clf.fit(Xtrain_dm, ytrain)
-pred = clf.predict(Xtest_dm)
+        return np.array([vectorize(doc) for doc in corpus]), vocab
 
-# Print predictions
-for doc, p in zip(Xtrain, pred):
-    p = 'pos' if p == 1 else 'neg'
-    print("%s -> %s" % (doc, p))
+    Xtrain_dm, vocab = count_vectorize(Xtrain)
+    Xtest_dm, _ = count_vectorize(Xtest)
 
-# Accuracy Metrics
-def accuracy_score(y_true, y_pred):
-    return np.mean(y_true == y_pred)
+    # Custom Multinomial Naive Bayes
+    class MultinomialNB:
+        def fit(self, X, y):
+            self.classes = np.unique(y)
+            self.class_count = np.array([np.sum(y == c) for c in self.classes])
+            self.feature_count = np.array([np.sum(X[y == c], axis=0) for c in self.classes])
+            self.feature_log_prob = np.log((self.feature_count + 1) / (self.feature_count.sum(axis=1, keepdims=True) + X.shape[1]))
+            self.class_log_prior = np.log(self.class_count / y.size)
 
-def confusion_matrix(y_true, y_pred):
-    classes = np.unique(y_true)
-    cm = np.zeros((classes.size, classes.size), dtype=int)
-    for i, j in zip(y_true, y_pred):
-        cm[i, j] += 1
-    return cm
+        def predict(self, X):
+            jll = X @ self.feature_log_prob.T + self.class_log_prior
+            return self.classes[np.argmax(jll, axis=1)]
 
-def precision_score(y_true, y_pred):
-    cm = confusion_matrix(y_true, y_pred)
-    return np.diag(cm) / cm.sum(axis=0)
+    clf = MultinomialNB()
+    clf.fit(Xtrain_dm, ytrain)
+    pred = clf.predict(Xtest_dm)
 
-def recall_score(y_true, y_pred):
-    cm = confusion_matrix(y_true, y_pred)
-    return np.diag(cm) / cm.sum(axis=1)
+    # Print predictions
+    for doc, p in zip(Xtrain, pred):
+        p = 'pos' if p == 1 else 'neg'
+        st.write(f"{doc} -> {p}")
 
-print('Accuracy Metrics: \n')
-print('Accuracy: ', accuracy_score(ytest, pred))
-print('Recall: ', recall_score(ytest, pred))
-print('Precision: ', precision_score(ytest, pred))
-print('Confusion Matrix: \n', confusion_matrix(ytest, pred))
+    # Accuracy Metrics
+    def accuracy_score(y_true, y_pred):
+        return np.mean(y_true == y_pred)
 
+    def confusion_matrix(y_true, y_pred):
+        classes = np.unique(y_true)
+        cm = np.zeros((classes.size, classes.size), dtype=int)
+        for i, j in zip(y_true, y_pred):
+            cm[i, j] += 1
+        return cm
 
+    def precision_score(y_true, y_pred):
+        cm = confusion_matrix(y_true, y_pred)
+        return np.diag(cm) / cm.sum(axis=0)
 
- 
+    def recall_score(y_true, y_pred):
+        cm = confusion_matrix(y_true, y_pred)
+        return np.diag(cm) / cm.sum(axis=1)
+
+    st.write('Accuracy Metrics: \n')
+    st.write('Accuracy: ', accuracy_score(ytest, pred))
+    st.write('Recall: ', recall_score(ytest, pred))
+    st.write('Precision: ', precision_score(ytest, pred))
+    st.write('Confusion Matrix: \n', confusion_matrix(ytest, pred))
+else:
+    st.write("Please upload a CSV file.")
