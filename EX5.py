@@ -1,130 +1,94 @@
+import pandas as pd
 import numpy as np
+from collections import Counter
+import math
 
-class CNN:
-    """
-    Simple convolutional neural network with one convolutional layer and one fully-connected layer.
-    """
-    def __init__(self, input_shape, num_classes, kernel_size=(3, 3), num_filters=8):
-        """
-        Initializes the CNN with input shape, number of classes, kernel size, and number of filters.
+# Load data
+msg = pd.read_csv('document.csv', names=['message', 'label'])
+print("Total Instances of Dataset: ", msg.shape[0])
+msg['labelnum'] = msg.label.map({'pos': 1, 'neg': 0})
 
-        Args:
-          input_shape: A tuple representing the shape of the input image (height, width, channels).
-          num_classes: The number of output classes (number of categories to classify).
-          kernel_size: A tuple representing the size of the convolutional kernel.
-          num_filters: The number of filters in the convolutional layer.
-        """
-        self.input_shape = input_shape
-        self.num_classes = num_classes
-        self.kernel_size = kernel_size
-        self.num_filters = num_filters
+X = msg.message
+y = msg.labelnum
 
-        # Initialize weights and biases for convolutional layer and fully-connected layer
-        self.conv_weights = np.random.randn(self.kernel_size[0], self.kernel_size[1], input_shape[2], self.num_filters) / np.sqrt(input_shape[2])
-        self.conv_bias = np.zeros(shape=(self.num_filters,))
-        self.fc_weights = np.random.randn(self.num_filters * input_shape[0] * input_shape[1], self.num_classes) / np.sqrt(self.num_filters * input_shape[0] * input_shape[1])
-        self.fc_bias = np.zeros(shape=(self.num_classes,))
+# Split data (using numpy)
+def train_test_split(X, y, test_size=0.25, random_state=None):
+    if random_state:
+        np.random.seed(random_state)
+    indices = np.arange(X.shape[0])
+    np.random.shuffle(indices)
+    split_idx = int(X.shape[0] * (1 - test_size))
+    train_idx, test_idx = indices[:split_idx], indices[split_idx:]
+    return X.iloc[train_idx], X.iloc[test_idx], y.iloc[train_idx], y.iloc[test_idx]
 
-    def sigmoid(self, x):
-        """
-        Sigmoid activation function.
-        """
-        return 1 / (1 + np.exp(-x))
+Xtrain, Xtest, ytrain, ytest = train_test_split(X, y)
 
-    def softmax(self, x):
-        """
-        Softmax activation function.
-        """
-        e_x = np.exp(x - np.max(x, axis=1, keepdims=True))
-        return e_x / np.sum(e_x, axis=1, keepdims=True)
-
-    def forward(self, X):
-        """
-        Forward pass through the CNN.
-
-        Args:
-          X: A numpy array representing the input image(s).
-
-        Returns:
-          A numpy array representing the output probabilities for each class.
-        """
-        # Convolutional layer
-        conv_out = np.zeros(shape=(X.shape[0], X.shape[1] - self.kernel_size[0] + 1, X.shape[2] - self.kernel_size[1] + 1, self.num_filters))
-        for i in range(X.shape[0]):
-            for f in range(self.num_filters):
-                for c in range(X.shape[2]):
-                    for j in range(self.kernel_size[0]):
-                        for k in range(self.kernel_size[1]):
-                            # Apply filter to input image
-                            conv_out[i, j, k, f] += X[i, j + self.kernel_size[0] - 1 - k, c] * self.conv_weights[j, k, c, f]
-                conv_out[i, :, :, f] += self.conv_bias[f]
-        # Apply activation (e.g., ReLU)
-        conv_out = self.sigmoid(conv_out)
-
-        # Flatten output for fully-connected layer
-        flattened = conv_out.reshape(X.shape[0], -1)
-
-        # Fully-connected layer
-        fc_out = flattened.dot(self.fc_weights) + self.fc_bias
-
-        # Apply softmax activation for probability distribution
-        output = self.softmax(fc_out)
-        return output
-
-    def train(self, X, y, learning_rate=0.01, epochs=10):
-        """
-        Trains the CNN using gradient descent.
-
-        Args:
-          X: A numpy array representing the training images.
-          y: A numpy array representing the training labels (one-hot encoded).
-          learning_rate: The learning rate for gradient descent.
-          epochs: The number of training epochs.
-        """
-        for epoch in range(epochs):
-            # Forward pass
-            output = self.forward(X)
-            
-            # Backpropagation
-            grad_output = output - y
-            grad_fc_weights = np.dot(flattened.T, grad_output)
-            grad_fc_bias = np.sum(grad_output, axis=0, keepdims=True)
-            
-            grad_fc_input = np.dot(grad_output, self.fc_weights.T)
-            grad_conv_input = grad_fc_input.reshape(conv_out.shape) * (conv_out * (1 - conv_out))
-            
-            grad_conv_weights = np.zeros(self.conv_weights.shape)
-            grad_conv_bias = np.zeros(self.conv_bias.shape)
-            
-            for i in range(X.shape[0]):
-                for f in range(self.num_filters):
-                    for c in range(X.shape[2]):
-                        for j in range(self.kernel_size[0]):
-                            for k in range(self.kernel_size[1]):
-                                grad_conv_weights[j, k, c, f] += np.sum(X[i, j:j + self.kernel_size[0] - 1 - k, c] * grad_conv_input[i, :, :, f])
-                    grad_conv_bias[f] += np.sum(grad_conv_input[i, :, :, f])
-            
-            # Update weights and biases
-            self.fc_weights -= learning_rate * grad_fc_weights
-            self.fc_bias -= learning_rate * grad_fc_bias.ravel()
-            self.conv_weights -= learning_rate * grad_conv_weights
-            self.conv_bias -= learning_rate * grad_conv_bias.ravel()
-
-            # Print loss (for monitoring)
-            loss = -np.sum(y * np.log(output + 1e-8)) / X.shape[0]
-            print(f'Epoch {epoch + 1}/{epochs}, Loss: {loss:.4f}')
-
-# Example usage:
-if __name__ == "__main__":
-    # Example of using the CNN class
-    input_shape = (28, 28, 1)  # Example: MNIST images shape
-    num_classes = 10  # Example: Number of classes (MNIST has 10 digits)
-    cnn = CNN(input_shape=input_shape, num_classes=num_classes)
+# Count Vectorization
+def count_vectorize(corpus):
+    vocab = Counter()
+    for doc in corpus:
+        vocab.update(doc.split())
+    vocab = sorted(vocab.keys())
     
-    # Example of training the CNN
-    X = np.random.randn(100, *input_shape)
-    y = np.random.randn(100, num_classes)
-    cnn.train(X, y)
+    def vectorize(doc):
+        vec = np.zeros(len(vocab))
+        word_counts = Counter(doc.split())
+        for i, word in enumerate(vocab):
+            vec[i] = word_counts[word]
+        return vec
+    
+    return np.array([vectorize(doc) for doc in corpus]), vocab
+
+Xtrain_dm, vocab = count_vectorize(Xtrain)
+Xtest_dm, _ = count_vectorize(Xtest)
+
+# Custom Multinomial Naive Bayes
+class MultinomialNB:
+    def fit(self, X, y):
+        self.classes = np.unique(y)
+        self.class_count = np.array([np.sum(y == c) for c in self.classes])
+        self.feature_count = np.array([np.sum(X[y == c], axis=0) for c in self.classes])
+        self.feature_log_prob = np.log((self.feature_count + 1) / (self.feature_count.sum(axis=1, keepdims=True) + X.shape[1]))
+        self.class_log_prior = np.log(self.class_count / y.size)
+        
+    def predict(self, X):
+        jll = X @ self.feature_log_prob.T + self.class_log_prior
+        return self.classes[np.argmax(jll, axis=1)]
+
+clf = MultinomialNB()
+clf.fit(Xtrain_dm, ytrain)
+pred = clf.predict(Xtest_dm)
+
+# Print predictions
+for doc, p in zip(Xtrain, pred):
+    p = 'pos' if p == 1 else 'neg'
+    print("%s -> %s" % (doc, p))
+
+# Accuracy Metrics
+def accuracy_score(y_true, y_pred):
+    return np.mean(y_true == y_pred)
+
+def confusion_matrix(y_true, y_pred):
+    classes = np.unique(y_true)
+    cm = np.zeros((classes.size, classes.size), dtype=int)
+    for i, j in zip(y_true, y_pred):
+        cm[i, j] += 1
+    return cm
+
+def precision_score(y_true, y_pred):
+    cm = confusion_matrix(y_true, y_pred)
+    return np.diag(cm) / cm.sum(axis=0)
+
+def recall_score(y_true, y_pred):
+    cm = confusion_matrix(y_true, y_pred)
+    return np.diag(cm) / cm.sum(axis=1)
+
+print('Accuracy Metrics: \n')
+print('Accuracy: ', accuracy_score(ytest, pred))
+print('Recall: ', recall_score(ytest, pred))
+print('Precision: ', precision_score(ytest, pred))
+print('Confusion Matrix: \n', confusion_matrix(ytest, pred))
+
 
 
  
