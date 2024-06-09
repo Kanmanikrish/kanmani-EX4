@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
@@ -32,8 +31,8 @@ def main():
     X, Y = generate_synthetic_data(n_samples=100, noise=10.0)
     
     st.subheader("Generated Dataset")
-    data = np.vstack((X, Y)).T
-    st.write(pd.DataFrame(data, columns=["Feature", "Target"]))
+    data = pd.DataFrame({'Feature': X, 'Target': Y})
+    st.write(data)
     
     # Define the range of x values for prediction
     x_pred = np.linspace(X.min(), X.max(), 300)
@@ -44,17 +43,18 @@ def main():
     # Predict y values using locally weighted regression
     y_pred = np.array([locally_weighted_regression(x, X, Y, tau) for x in x_pred])
     
-    # Plotting the results
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.scatter(X, Y, color='blue', label='Data Points')
-    ax.plot(x_pred, y_pred, color='red', label='LWR Curve')
-    ax.set_xlabel('Feature')
-    ax.set_ylabel('Target')
-    ax.legend()
-    ax.set_title('Locally Weighted Regression')
+    # Create a DataFrame for plotting
+    plot_data = pd.DataFrame({'x_pred': x_pred, 'y_pred': y_pred})
     
-    # Display plot in Streamlit
-    st.pyplot(fig)
+    # Plotting the results using Streamlit's built-in functionality
+    st.subheader("Plot")
+    st.line_chart(plot_data.rename(columns={'x_pred': 'index'}).set_index('index')['y_pred'])
+    
+    # Add scatter points for the original data
+    st.subheader("Data Points")
+    st.write(data)
+    st.scatter_chart(data.rename(columns={'Feature': 'index'}).set_index('index')['Target'])
 
 if __name__ == "__main__":
     main()
+
