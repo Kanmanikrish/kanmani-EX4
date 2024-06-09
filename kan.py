@@ -5,7 +5,7 @@ import math
 import streamlit as st
 
 # Set title with color
-st.markdown("<span style='color:#008080'><h1>BYTES BRIGADES</h1></span>", unsafe_allow_html=True)
+st.markdown("<span style='color:purple'><h1>BYTES BRIGADES</h1></span>", unsafe_allow_html=True)
 
 # File uploader
 uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
