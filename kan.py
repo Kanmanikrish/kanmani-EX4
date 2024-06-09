@@ -4,8 +4,8 @@ from collections import Counter
 import math
 import streamlit as st
 
-# Set title
-st.title("BYTES BRIGADES")
+# Set title with color
+st.markdown("<span style='color:#008080'><h1>BYTES BRIGADES</h1></span>", unsafe_allow_html=True)
 
 # File uploader
 uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
@@ -98,3 +98,4 @@ if uploaded_file is not None:
     st.write('Confusion Matrix: \n', confusion_matrix(ytest, pred))
 else:
     st.write("Please upload a CSV file.")
+
