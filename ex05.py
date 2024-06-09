@@ -3,47 +3,33 @@ import numpy as np
 from collections import Counter
 import math
 import streamlit as st
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My First Webpage</title>
-</head>
-<body>
-    <header>
-        <h1>Welcome to My Website</h1>
-        <nav>
-            <ul>
-                <li><a href="#">Home</a></li>
-                <li><a href="#">About</a></li>
-                <li><a href="#">Services</a></li>
-                <li><a href="#">Contact</a></li>
-            </ul>
-        </nav>
-    </header>
+def calculate_rectangle_area(length, width):
+    """
+    Calculate the area of a rectangle.
 
-    <main>
-        <section>
-            <h2>About Us</h2>
-            <p>This is a brief description of our website and what we offer.</p>
-        </section>
+    Parameters:
+    length (float): The length of the rectangle.
+    width (float): The width of the rectangle.
 
-        <section>
-            <h2>Our Services</h2>
-            <ul>
-                <li>Service 1</li>
-                <li>Service 2</li>
-                <li>Service 3</li>
-            </ul>
-        </section>
-    </main>
+    Returns:
+    float: The area of the rectangle.
+    """
+    return length * width
 
-    <footer>
-        <p>&copy; 2024 My Website. All rights reserved.</p>
-    </footer>
-</body>
-</html>
+def main():
+    # Input the dimensions of the rectangle
+    length = float(input("Enter the length of the rectangle: "))
+    width = float(input("Enter the width of the rectangle: "))
+
+    # Calculate the area
+    area = calculate_rectangle_area(length, width)
+
+    # Output the result
+    print("The area of the rectangle is:", area)
+
+if __name__ == "__main__":
+    main()
+
 
 # File uploader
 uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
