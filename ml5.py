@@ -4,8 +4,8 @@ from collections import Counter
 import streamlit as st
 
 # Title
-st.write("BYTES BRIGADES")
-st.title("Naïve Bayesian Classifier model")
+st.title("BYTES BRIGADES")
+st.write("Naïve Bayesian Classifier model")
 
 # File uploader
 uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
