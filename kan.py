@@ -5,7 +5,7 @@ import math
 import streamlit as st
 
 # Set title
-st.title("Text Classification App")
+st.title("BYTES BRIGADES")
 
 # File uploader
 uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
