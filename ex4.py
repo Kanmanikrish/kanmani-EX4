@@ -29,7 +29,8 @@ class NaiveBayesClassifier:
         return posterior + np.log(prior)
 
 def main():
-    st.title("Tennis Data Classifier")
+    st.title("BYTES BRIGADES")
+    st.subtitle("Tennis Data Classifier")
 
     # File upload
     uploaded_file = st.file_uploader("Upload CSV file", type=['csv'])
