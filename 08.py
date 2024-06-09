@@ -2,7 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 from streamlit.datasets import load_iris
-from atreamlit.model_selection import train_test_split
+from streamlit.model_selection import train_test_split
 
 def euclidean_distance(a, b):
     return np.sqrt(np.sum((a - b) ** 2))
